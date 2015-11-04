@@ -27,6 +27,11 @@ v0.23 + 1
   as the constructor for a TLS stream instead of the libgit2 built-in
   one.
 
+* `git_blob_create_fromstream()` and
+  `git_blob_create_fromstream_commit()` allow you to create a blob by
+  writing into a stream. Useful when you do not know the final size or
+  want to copy the contents from another stream.
+
 ### API removals
 
 ### Breaking API changes
