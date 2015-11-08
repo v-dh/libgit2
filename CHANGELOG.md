@@ -34,6 +34,9 @@ v0.23 + 1
 
 ### API removals
 
+* `git_blob_create_fromchunks()` has been removed in favour of
+  `git_blob_create_fromstream()`.
+
 ### Breaking API changes
 
 * `git_cert` descendent types now have a proper `parent` member
