@@ -60,7 +60,7 @@ if [ -e ./libgit2_clar ]; then
         ./libgit2_clar -sonline::clone::cred_callback || exit $?
     fi
 
-    java -jar poxyproxy.jar -d --port 8080 --credentials foo:bar &
+    java -jar poxyproxy.jar -d --port 8080 --credentials foo:bar || exit $? &
 
     export GITTEST_REMOTE_PROXY_URL="http://foo:bar@localhost:8080/"
     ./libgit2_clar -sonline::clone::proxy_credentials_in_url
