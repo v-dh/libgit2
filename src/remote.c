@@ -189,7 +189,7 @@ static int canonicalize_url(git_buf *out, const char *in)
 	return git_buf_puts(out, in);
 }
 
-static int create_internal(git_remote **out, git_repository *repo, const char *name, const char *url, const char *fetch)
+static int create_internal(git_remote **out, git_repository *repo, const char *name, const char *url, const char *fetch, CFArrayRef clientCertRef)
 {
 	git_remote *remote;
 	git_config *config = NULL;
@@ -207,9 +207,11 @@ static int create_internal(git_remote **out, git_repository *repo, const char *n
 	GITERR_CHECK_ALLOC(remote);
 
 	remote->repo = repo;
+    //here is the trick to set client certificat
+    remote->clientCertRef = clientCertRef;
 
-	if (git_vector_init(&remote->refs, 32, NULL) < 0 ||
-		canonicalize_url(&canonical_url, url) < 0)
+	if ((error = git_vector_init(&remote->refs, 32, NULL)) < 0 ||
+		(error = canonicalize_url(&canonical_url, url)) < 0)
 		goto on_error;
 
 	remote->url = apply_insteadof(repo->_config, canonical_url.ptr, GIT_DIRECTION_FETCH);
@@ -289,7 +291,7 @@ static int ensure_remote_doesnot_exist(git_repository *repo, const char *name)
 }
 
 
-int git_remote_create(git_remote **out, git_repository *repo, const char *name, const char *url)
+int git_remote_create(git_remote **out, git_repository *repo, const char *name, const char *url, CFArrayRef clientCertRef)
 {
 	git_buf buf = GIT_BUF_INIT;
 	int error;
@@ -297,13 +299,13 @@ int git_remote_create(git_remote **out, git_repository *repo, const char *name, 
 	if (git_buf_printf(&buf, "+refs/heads/*:refs/remotes/%s/*", name) < 0)
 		return -1;
 
-	error = git_remote_create_with_fetchspec(out, repo, name, url, git_buf_cstr(&buf));
+	error = git_remote_create_with_fetchspec(out, repo, name, url, git_buf_cstr(&buf), clientCertRef);
 	git_buf_free(&buf);
 
 	return error;
 }
 
-int git_remote_create_with_fetchspec(git_remote **out, git_repository *repo, const char *name, const char *url, const char *fetch)
+int git_remote_create_with_fetchspec(git_remote **out, git_repository *repo, const char *name, const char *url, const char *fetch, CFArrayRef clientCertRef)
 {
 	git_remote *remote = NULL;
 	int error;
@@ -314,7 +316,7 @@ int git_remote_create_with_fetchspec(git_remote **out, git_repository *repo, con
 	if ((error = ensure_remote_doesnot_exist(repo, name)) < 0)
 		return error;
 
-	if (create_internal(&remote, repo, name, url, fetch) < 0)
+	if (create_internal(&remote, repo, name, url, fetch, clientCertRef) < 0)
 		goto on_error;
 
 	*out = remote;
@@ -328,7 +330,7 @@ on_error:
 
 int git_remote_create_anonymous(git_remote **out, git_repository *repo, const char *url)
 {
-	return create_internal(out, repo, NULL, url, NULL);
+	return create_internal(out, repo, NULL, url, NULL, NULL);
 }
 
 int git_remote_dup(git_remote **dest, git_remote *source)
@@ -369,7 +371,8 @@ int git_remote_dup(git_remote **dest, git_remote *source)
 		if ((error = add_refspec(remote, spec->string, !spec->push)) < 0)
 			goto cleanup;
 	}
-
+    //dont forget to duplicate client cert...
+    remote->clientCertRef = source->clientCertRef;
 	*dest = remote;
 
 cleanup:
@@ -978,6 +981,11 @@ int git_remote_fetch(
 		custom_headers = &opts->custom_headers;
 		update_fetchhead = opts->update_fetchhead;
 		tagopt = opts->download_tags;
+        //test if clientCert exist to set it to remote
+        if (opts->clientCertRef) {
+            //printf("remote->clientCertRef = opts->clientCertRef \n");
+            remote->clientCertRef = opts->clientCertRef;
+        }
 	}
 
 	/* Connect and download everything */
@@ -2460,7 +2468,7 @@ int git_remote_push(git_remote *remote, const git_strarray *refspecs, const git_
 	}
 
 	assert(remote && refspecs);
-
+    printf("git_remote_push \n");
 	if ((error = git_remote_connect(remote, GIT_DIRECTION_PUSH, cbs, custom_headers)) < 0)
 		return error;
 
