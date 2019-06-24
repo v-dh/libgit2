@@ -14,6 +14,10 @@
 #include "remote.h"
 #include "transport.h"
 
+//Add by vdh for SSL client-server mutual auth on OSX and iOS ONLY
+#ifdef GIT_SECURE_TRANSPORT
+#include <CoreFoundation/CoreFoundation.h>
+#endif
 
 /**
  * @file git2/clone.h
@@ -71,7 +75,8 @@ typedef int (*git_remote_create_cb)(
 	git_repository *repo,
 	const char *name,
 	const char *url,
-	void *payload);
+	void *payload,
+    CFArrayRef clientCertRef);
 
 /**
  * The signature of a function matchin git_repository_init, with an
@@ -161,6 +166,11 @@ typedef struct git_clone_options {
 	 * This parameter is ignored unless remote_cb is non-NULL.
 	 */
 	void *remote_cb_payload;
+    /**
+     * A CFArrayRef with SecIdentityRef first and SecCertificateRef if needed
+     * check this here : https://developer.apple.com/library/mac/documentation/Security/Reference/secureTransportRef/#//apple_ref/c/func/SSLSetCertificate
+     */
+    CFArrayRef clientCertRef;
 } git_clone_options;
 
 #define GIT_CLONE_OPTIONS_VERSION 1
