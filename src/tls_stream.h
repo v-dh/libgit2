@@ -7,6 +7,11 @@
 #ifndef INCLUDE_tls_stream_h__
 #define INCLUDE_tls_stream_h__
 
+//Add by vdh for SSL client-server mutual auth on OSX and iOS ONLY
+#ifdef GIT_SECURE_TRANSPORT
+#include <CoreFoundation/CoreFoundation.h>
+#endif
+
 #include "git2/sys/stream.h"
 
 /**
