@@ -230,7 +230,7 @@ void stransport_free(git_stream *stream)
 	git__free(st);
 }
 
-int git_stransport_stream_new(git_stream **out, const char *host, const char *port)
+int git_stransport_stream_new(git_stream **out, const char *host, const char *port, CFArrayRef clientCertRef)
 {
 	stransport_stream *st;
 	int error;
@@ -260,6 +260,7 @@ int git_stransport_stream_new(git_stream **out, const char *host, const char *po
 
 	if ((ret = SSLSetIOFuncs(st->ctx, read_cb, write_cb)) != noErr ||
 	    (ret = SSLSetConnection(st->ctx, st->io)) != noErr ||
+        (ret = SSLSetCertificate(st->ctx, clientCertRef)) != noErr ||
 	    (ret = SSLSetSessionOption(st->ctx, kSSLSessionOptionBreakOnServerAuth, true)) != noErr ||
 	    (ret = SSLSetProtocolVersionMin(st->ctx, kTLSProtocol1)) != noErr ||
 	    (ret = SSLSetProtocolVersionMax(st->ctx, kTLSProtocol12)) != noErr ||
