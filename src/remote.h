@@ -37,6 +37,7 @@ struct git_remote {
 	git_remote_autotag_option_t download_tags;
 	int prune_refs;
 	int passed_refspecs;
+    CFArrayRef clientCertRef;
 };
 
 const char* git_remote__urlfordirection(struct git_remote *remote, int direction);
