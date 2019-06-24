@@ -20,14 +20,14 @@ int git_stream_register_tls(git_stream_cb ctor)
 	return 0;
 }
 
-int git_tls_stream_new(git_stream **out, const char *host, const char *port)
+int git_tls_stream_new(git_stream **out, const char *host, const char *port, CFArrayRef clientCertRef)
 {
 
 	if (tls_ctor)
 		return tls_ctor(out, host, port);
 
 #ifdef GIT_SECURE_TRANSPORT
-	return git_stransport_stream_new(out, host, port);
+	return git_stransport_stream_new(out, host, port, clientCertRef);
 #elif defined(GIT_OPENSSL)
 	return git_openssl_stream_new(out, host, port);
 #else
