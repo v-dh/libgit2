@@ -728,9 +728,9 @@ int git_remote_connect(git_remote *remote, git_direction direction, const git_re
 
 	/* If we don't have a transport object yet, and the caller specified a
 	 * custom transport factory, use that */
-	if (!t && transport &&
-		(error = transport(&t, remote, payload)) < 0)
-		return error;
+    if (!t && transport &&
+        (error = transport(&t, remote, payload)) < 0)
+        return error;
 
 	/* If we still don't have a transport, then use the global
 	 * transport registrations which map URI schemes to transport factories */
@@ -2468,7 +2468,7 @@ int git_remote_push(git_remote *remote, const git_strarray *refspecs, const git_
 	}
 
 	assert(remote && refspecs);
-    printf("git_remote_push \n");
+    //printf("git_remote_push \n");
 	if ((error = git_remote_connect(remote, GIT_DIRECTION_PUSH, cbs, custom_headers)) < 0)
 		return error;
 
