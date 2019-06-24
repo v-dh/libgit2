@@ -6,7 +6,6 @@
  */
 
 #include <assert.h>
-
 #include "git2/clone.h"
 #include "git2/remote.h"
 #include "git2/revparse.h"
@@ -23,6 +22,11 @@
 #include "path.h"
 #include "repository.h"
 #include "odb.h"
+
+//Add by vdh for SSL client-server mutual auth on OSX and iOS ONLY
+#ifdef GIT_SECURE_TRANSPORT
+#include <CoreFoundation/CoreFoundation.h>
+#endif
 
 static int clone_local_into(git_repository *repo, git_remote *remote, const git_fetch_options *fetch_opts, const git_checkout_options *co_opts, const char *branch, int link);
 
@@ -243,8 +247,8 @@ static int default_remote_create(
 		void *payload)
 {
 	GIT_UNUSED(payload);
-
-	return git_remote_create(out, repo, name, url);
+    //nil without client certificate
+	return git_remote_create(out, repo, name, url, nil);
 }
 
 /*
@@ -276,7 +280,7 @@ static int create_and_configure_origin(
 		payload = NULL;
 	}
 
-	if ((error = remote_create(&origin, repo, "origin", url, payload)) < 0)
+	if ((error = remote_create(&origin, repo, "origin", url, payload, options->clientCertRef)) < 0)
 		goto on_error;
 
 	*out = origin;
@@ -426,12 +430,12 @@ int git_clone(
 
 		if (clone_local == 1)
 			error = clone_local_into(
-				repo, origin, &options.fetch_opts, &options.checkout_opts,
-				options.checkout_branch, link);
-		else if (clone_local == 0)
-			error = clone_into(
-				repo, origin, &options.fetch_opts, &options.checkout_opts,
-				options.checkout_branch);
+                repo, origin, &options.fetch_opts, &options.checkout_opts,
+                options.checkout_branch, link);
+        else if (clone_local == 0)
+            error = clone_into(
+                repo, origin, &options.fetch_opts, &options.checkout_opts,
+                options.checkout_branch);
 		else
 			error = -1;
 
