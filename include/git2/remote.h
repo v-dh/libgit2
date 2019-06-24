@@ -16,6 +16,11 @@
 #include "transport.h"
 #include "pack.h"
 
+//Add by vdh for SSL client-server mutual auth on OSX and iOS ONLY
+#ifdef GIT_SECURE_TRANSPORT
+#include <CoreFoundation/CoreFoundation.h>
+#endif
+
 /**
  * @file git2/remote.h
  * @brief Git remote management functions
@@ -34,13 +39,15 @@ typedef int (*git_remote_rename_problem_cb)(const char *problematic_refspec, voi
  * @param repo the repository in which to create the remote
  * @param name the remote's name
  * @param url the remote's url
+ * @param clientCertRef specifies the connection’s certificate or certificates
  * @return 0, GIT_EINVALIDSPEC, GIT_EEXISTS or an error code
  */
 GIT_EXTERN(int) git_remote_create(
 		git_remote **out,
 		git_repository *repo,
 		const char *name,
-		const char *url);
+		const char *url,
+        CFArrayRef clientCertRef);
 
 /**
  * Add a remote with the provided fetch refspec (or default if NULL) to the repository's
@@ -51,6 +58,7 @@ GIT_EXTERN(int) git_remote_create(
  * @param name the remote's name
  * @param url the remote's url
  * @param fetch the remote fetch value
+ * @param clientCertRef specifies the connection’s certificate or certificates
  * @return 0, GIT_EINVALIDSPEC, GIT_EEXISTS or an error code
  */
 GIT_EXTERN(int) git_remote_create_with_fetchspec(
@@ -58,7 +66,8 @@ GIT_EXTERN(int) git_remote_create_with_fetchspec(
 		git_repository *repo,
 		const char *name,
 		const char *url,
-		const char *fetch);
+		const char *fetch,
+        CFArrayRef clientCertRef);
 
 /**
  * Create an anonymous remote
@@ -552,6 +561,12 @@ typedef struct {
 	 * Extra headers for this fetch operation
 	 */
 	git_strarray custom_headers;
+    /**
+     * A CFArrayRef with SecIdentityRef first and SecCertificateRef if needed
+     * check this here : https://developer.apple.com/library/mac/documentation/Security/Reference/secureTransportRef/#//apple_ref/c/func/SSLSetCertificate
+     */
+    CFArrayRef clientCertRef;
+    
 } git_fetch_options;
 
 #define GIT_FETCH_OPTIONS_VERSION 1
