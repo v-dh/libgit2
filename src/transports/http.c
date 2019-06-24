@@ -19,6 +19,17 @@
 #include "socket_stream.h"
 #include "curl_stream.h"
 
+//Add by vdh for SSL client-server mutual auth on OSX and iOS ONLY
+#ifdef GIT_SECURE_TRANSPORT
+#include <CoreFoundation/CoreFoundation.h>
+#endif
+
+//Add by vdh for cookies management
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <assert.h>
+
 git_http_auth_scheme auth_schemes[] = {
 	{ GIT_AUTHTYPE_NEGOTIATE, "Negotiate", GIT_CREDTYPE_DEFAULT, git_http_auth_negotiate },
 	{ GIT_AUTHTYPE_BASIC, "Basic", GIT_CREDTYPE_USERPASS_PLAINTEXT, git_http_auth_basic },
@@ -36,6 +47,7 @@ static const char *post_verb = "POST";
 #define OWNING_SUBTRANSPORT(s) ((http_subtransport *)(s)->parent.subtransport)
 
 #define PARSE_ERROR_GENERIC	-1
+#define PARSE_ERROR_CREDENTIAL -6
 #define PARSE_ERROR_REPLAY	-2
 /** Look at the user field */
 #define PARSE_ERROR_EXT         -3
@@ -83,6 +95,8 @@ typedef struct {
 	int parse_error;
 	int error;
 	unsigned parse_finished : 1;
+    //add by vdh for set-cookie management
+    char *cookies;
 
 	/* Authentication */
 	git_cred *cred;
@@ -207,9 +221,10 @@ static int gen_request(
 	size_t i;
 
 	git_buf_printf(buf, "%s %s%s HTTP/1.1\r\n", s->verb, path, s->service_url);
-
-	git_buf_printf(buf, "User-Agent: git/1.0 (%s)\r\n", user_agent());
+    git_buf_printf(buf, "Cookie: %s\r\n", t->cookies);
+	git_buf_printf(buf, "User-Agent: git/1.0b (%s)\r\n", user_agent());
 	git_buf_printf(buf, "Host: %s\r\n", t->connection_data.host);
+    git_buf_printf(buf, "Connection: keep-alive\r\n");
 
 	if (s->chunked || content_length > 0) {
 		git_buf_printf(buf, "Accept: application/x-git-%s-result\r\n", s->service);
@@ -264,11 +279,40 @@ static int parse_authenticate_response(
 	return 0;
 }
 
+//Add by vdh to concatenate cookies
+char* concat(char *s1, char *s2)
+{
+    char *result = malloc(strlen(s1)+strlen(s2)+1);
+    
+    strcpy(result, s1);
+    strcat(result, s2);
+    return result;
+}
+
 static int on_header_ready(http_subtransport *t)
 {
 	git_buf *name = &t->parse_header_name;
 	git_buf *value = &t->parse_header_value;
-
+    //Add by vdh to manage cookies
+    if(strstr(git_buf_cstr(name), "Set-Cookie") != NULL) {
+        char *cookie = git_buf_cstr(value);
+        char header_value[strlen(cookie)];
+        
+        strcpy(header_value, cookie);
+        const char s[2] = ";";
+        char *keyValue;
+        keyValue = strtok(header_value, s);
+        
+        if (!t->cookies) {
+            t->cookies = git__strdup(keyValue);
+        }
+        else {
+            char* tmp = concat(t->cookies, "; ");
+            t->cookies = concat(tmp, keyValue);
+            free(tmp);//deallocate the string
+        }
+     }
+    
 	if (!strcasecmp("Content-Type", git_buf_cstr(name))) {
 		if (!t->content_type) {
 			t->content_type = git__strdup(git_buf_cstr(value));
@@ -360,6 +404,8 @@ static int on_headers_complete(http_parser *parser)
 				if (t->cred) {
 					t->cred->free(t->cred);
 					t->cred = NULL;
+                    //vdh if cred failed ? go out !! (remove next line for go back)
+                    return t->parse_error = PARSE_ERROR_CREDENTIAL;
 				}
 
 				error = t->owner->cred_acquire_cb(&t->cred,
@@ -572,7 +618,8 @@ static int http_connect(http_subtransport *t)
 	}
 
 	if (t->connection_data.use_ssl) {
-		error = git_tls_stream_new(&t->io, t->connection_data.host, t->connection_data.port);
+        git_remote *remote = t->owner->owner;
+		error = git_tls_stream_new(&t->io, t->connection_data.host, t->connection_data.port, remote->clientCertRef);
 	} else {
 #ifdef GIT_CURL
 		error = git_curl_stream_new(&t->io, t->connection_data.host, t->connection_data.port);
