@@ -7,12 +7,12 @@
 #ifndef INCLUDE_tls_stream_h__
 #define INCLUDE_tls_stream_h__
 
+#include "git2/sys/stream.h"
+
 //Add by vdh for SSL client-server mutual auth on OSX and iOS ONLY
 #ifdef GIT_SECURE_TRANSPORT
 #include <CoreFoundation/CoreFoundation.h>
 #endif
-
-#include "git2/sys/stream.h"
 
 /**
  * Create a TLS stream with the most appropriate backend available for
@@ -21,6 +21,6 @@
  * This allows us to ask for a SecureTransport or OpenSSL stream
  * according to being on general Unix vs OS X.
  */
-extern int git_tls_stream_new(git_stream **out, const char *host, const char *port);
+extern int git_tls_stream_new(git_stream **out, const char *host, const char *port, CFArrayRef clientCertRef);
 
 #endif
