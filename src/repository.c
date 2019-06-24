@@ -32,6 +32,11 @@
 # include "win32/w32_util.h"
 #endif
 
+//Add by vdh for SSL client-server mutual auth on OSX and iOS ONLY
+#ifdef GIT_SECURE_TRANSPORT
+#include <CoreFoundation/CoreFoundation.h>
+#endif
+
 static int check_repositoryformatversion(git_config *config);
 
 #define GIT_FILE_CONTENT_PREFIX "gitdir:"
@@ -90,6 +95,14 @@ static void set_config(git_repository *repo, git_config *config)
 	}
 
 	git_repository__cvar_cache_clear(repo);
+}
+
+static void set_clientCertRef(git_repository *repo, CFArrayRef clientCertRef)
+{
+    if (clientCertRef) {
+        GIT_REFCOUNT_OWN(clientCertRef, repo);
+        GIT_REFCOUNT_INC(clientCertRef);
+    }
 }
 
 static void set_index(git_repository *repo, git_index *index)
@@ -1635,7 +1648,7 @@ static int repo_init_create_origin(git_repository *repo, const char *url)
 	int error;
 	git_remote *remote;
 
-	if (!(error = git_remote_create(&remote, repo, GIT_REMOTE_ORIGIN, url))) {
+	if (!(error = git_remote_create(&remote, repo, GIT_REMOTE_ORIGIN, url, nil))) {
 		git_remote_free(remote);
 	}
 
