@@ -14,6 +14,11 @@
 #include "refspec.h"
 #include "vector.h"
 
+//Add by vdh for SSL client-server mutual auth on OSX and iOS ONLY
+#ifdef GIT_SECURE_TRANSPORT
+#include <CoreFoundation/CoreFoundation.h>
+#endif
+
 #define GIT_REMOTE_ORIGIN "origin"
 
 struct git_remote {
